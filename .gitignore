@@ -25,3 +25,4 @@ examples/img/*
 .pip/*
 .python_history
 *.caffemodel
+Keras_model*
