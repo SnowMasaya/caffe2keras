@@ -25,13 +25,27 @@ deploy.prototxt
 
 ## Usage
 
-1. Convert to prototxt
+1. Move to model and prottxt
+
+```
+mv {Your download folder}/deploy.prototxt caffe2keras/caffe2keras_ssd/caffe/models/
+mv {Your download folder}/*.caffemodel caffe2keras/caffe2keras_ssd/caffe/models/
+```
+
+2. access to docker images
+
+```
+cd caffe2keras/docker
+make bash
+```
+
+3. Convert to prototxt
 
 ```
 python run_convert_prototxt.py -prototxt models/deploy.prototxt.bk -store_file models/deploy.prototxt
 ```
 
-2. Convert to Caffe model to keras model
+4. Convert to Caffe model to keras model
 
 ```
 python caffe2keras.py -load_path models -prototxt deploy.prototxt -caffemodel VGG_VOC0712_SSD_300x300_iter_120000.caffemodel
