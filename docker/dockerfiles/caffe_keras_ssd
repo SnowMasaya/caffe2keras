@@ -1,0 +1,226 @@
+#################################################################################################################
+# Reference
+#    https://github.com/fchollet/keras/blob/master/docker/Dockerfile
+#################################################################################################################
+
+FROM ubuntu:14.04
+
+#################################################################################################################
+#           ENV Setting
+#################################################################################################################
+ARG KERAS_VERSION=1.0.3
+ARG LASAGNE_VERSION=v0.1
+ARG TORCH_VERSION=latest
+ARG CAFFE_VERSION=master
+
+#################################################################################################################
+#           Initial Setting
+#################################################################################################################
+
+# Install some dependencies
+RUN apt-get update && apt-get install -y \
+		bc \
+		build-essential \
+		cmake \
+		curl \
+		g++ \
+		gfortran \
+		git \
+		libffi-dev \
+		libfreetype6-dev \
+		libhdf5-dev \
+		libjpeg-dev \
+		liblcms2-dev \
+		libopenblas-dev \
+		liblapack-dev
+RUN apt-get update && apt-get install -y \
+		#libopenjpeg2 \
+		libpng12-dev \
+		libssl-dev \
+		libtiff5-dev \
+		libwebp-dev \
+		libzmq3-dev \
+		nano \
+		pkg-config \
+		python-dev \
+		software-properties-common \
+		unzip \
+		vim \
+		wget \
+		zlib1g-dev \
+		&& \
+	apt-get clean && \
+	apt-get autoremove && \
+	rm -rf /var/lib/apt/lists/* && \
+# Link BLAS library to use OpenBLAS using the alternatives mechanism (https://www.scipy.org/scipylib/building/linux.html#debian-ubuntu)
+	update-alternatives --set libblas.so.3 /usr/lib/openblas-base/libblas.so.3
+
+#################################################################################################################
+#           Python Setting
+#################################################################################################################
+# Install pip
+RUN curl -O https://bootstrap.pypa.io/get-pip.py && \
+	python get-pip.py && \
+	rm get-pip.py
+
+# Add SNI support to Python
+RUN pip --no-cache-dir install \
+		pyopenssl \
+		ndg-httpsclient \
+		pyasn1
+
+# Install useful Python packages using apt-get to avoid version incompatibilities with Tensorflow binary
+# especially numpy, scipy, skimage and sklearn (see https://github.com/tensorflow/tensorflow/issues/2034)
+RUN apt-get update && apt-get install -y \
+		python-numpy \
+		python-scipy \
+		python-nose \
+		python-h5py \
+		python-skimage \
+		python-matplotlib \
+		python-pandas \
+		python-sklearn \
+		python-sympy \
+		&& \
+	apt-get clean && \
+	apt-get autoremove && \
+	rm -rf /var/lib/apt/lists/*
+
+# Install other useful Python packages using pip
+RUN pip --no-cache-dir install --upgrade ipython && \
+	pip --no-cache-dir install \
+		Cython \
+		ipykernel \
+		jupyter \
+		path.py \
+		Pillow \
+		pygments \
+		six \
+		sphinx \
+		wheel \
+		zmq \
+		&& \
+	python -m ipykernel.kernelspec
+
+#################################################################################################################
+#           Tensorflow Setting
+#################################################################################################################
+# Install TensorFlow
+RUN pip install --upgrade tensorflow
+
+#################################################################################################################
+#           Caffe Setting
+#################################################################################################################
+# Install dependencies for Caffe
+RUN apt-get update && apt-get install -y \
+		libboost-all-dev \
+		libgflags-dev \
+		libgoogle-glog-dev \
+		libhdf5-serial-dev \
+		libleveldb-dev \
+		liblmdb-dev \
+		libopencv-dev \
+		libprotobuf-dev \
+		libsnappy-dev \
+		protobuf-compiler \
+		&& \
+	apt-get clean && \
+	apt-get autoremove && \
+	rm -rf /var/lib/apt/lists/*
+#################################################################################################################
+#           User Setting
+#################################################################################################################
+ENV NB_USER keras
+ENV NB_UID 1000
+
+RUN useradd -m -s /bin/bash -N -u $NB_UID $NB_USER && \
+    mkdir -p /src && \
+    chown keras /src
+
+#################################################################################################################
+#           Install Caffe
+#################################################################################################################
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        wget \
+        libatlas-base-dev \
+        libboost-all-dev \
+        libgflags-dev \
+        libgoogle-glog-dev \
+        libhdf5-serial-dev \
+        libleveldb-dev \
+        liblmdb-dev \
+        libopencv-dev \
+        libprotobuf-dev \
+        libsnappy-dev \
+        protobuf-compiler \
+        python-dev \
+        python-numpy \
+        python-pip \
+        python-setuptools \
+        python-scipy && \
+    rm -rf /var/lib/apt/lists/*
+# FIXME: use ARG instead of ENV once DockerHub supports this
+# https://github.com/docker/hub-feedback/issues/460
+
+RUN git clone https://github.com/weiliu89/caffe.git /src/caffe && \
+    cd /src/caffe && \
+    git checkout ssd && \
+    cd python && for req in $(cat requirements.txt) pydot; do /usr/local/bin/pip2.7 install $req; done && cd .. && \
+    cp Makefile.config.example Makefile.config && \
+    mkdir build && cd build && \
+    cmake -DCPU_ONLY=1 .. && \
+    make -j"$(nproc)"
+
+# Set up Caffe environment variables
+ENV CAFFE_ROOT=/src/caffe
+ENV PYCAFFE_ROOT=$CAFFE_ROOT/python
+ENV PYTHONPATH=$PYCAFFE_ROOT:$PYTHONPATH \
+	PATH=$CAFFE_ROOT/build/tools:$PYCAFFE_ROOT:$PATH
+
+RUN echo "$CAFFE_ROOT/build/lib" >> /etc/ld.so.conf.d/caffe.conf && ldconfig
+
+
+#################################################################################################################
+#           Keras Setting
+#################################################################################################################
+# Install Keras
+ARG KERAS_VERSION=1.2.2
+RUN pip --no-cache-dir install git+git://github.com/fchollet/keras.git@${KERAS_VERSION}
+
+
+# Install Lasagne
+RUN pip --no-cache-dir install git+git://github.com/Lasagne/Lasagne.git@${LASAGNE_VERSION}
+
+#################################################################################################################
+#           OpenCV Setting
+#################################################################################################################
+RUN apt-get update && apt-get install -y python-opencv
+#################################################################################################################
+#           Keras Model Zoo Setting
+#                https://github.com/albertomontesg/keras-model-zoo
+#################################################################################################################
+RUN git clone --depth 1 https://github.com/albertomontesg/keras-model-zoo.git /src/kerasmodelzoo && \
+    cd /src/kerasmodelzoo && \
+    python setup.py install
+#################################################################################################################
+#           PyTest Setting
+#################################################################################################################
+RUN pip install -U pytest
+#################################################################################################################
+#           Notebook Setting
+#################################################################################################################
+
+# Setup the model and weight
+RUN mkdir -p /src/model
+
+# Expose Ports for TensorBoard (6006), Ipython (8888)
+EXPOSE 6006 8888
+
+ENV SSD_PATH=/home/caffe2keras/caffe2keras_ssd/caffe
+WORKDIR $SSD_PATH
+# USER keras
+ENV PYTHONPATH=$SSD_PATH:$PYTHONPATH
+
+# CMD jupyter notebook --port=8888 --ip=0.0.0.0
+
