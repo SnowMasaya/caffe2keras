@@ -6,8 +6,7 @@ Caffe model convert to keras for ssd model
 
 Caffe ssd model convert to keras model weight
 
-***DEMO:***
-
+![caffe to keras](https://d26dzxoao6i3hh.cloudfront.net/items/0v2j2c402o0e3J3r0x0B/Screenshot%20from%202017-07-18%2008%3A47%3A54.png)
 
 ## Requirement
 
