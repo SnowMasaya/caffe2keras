@@ -19,3 +19,9 @@ examples/img/*
 
 # developer environments
 .idea
+
+.bash_history
+.keras/*
+.pip/*
+.python_history
+*.caffemodel
