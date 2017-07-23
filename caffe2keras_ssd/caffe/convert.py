@@ -453,7 +453,9 @@ def create_model(layers, phase, input_dim, debug=False):
             elif type_of_layer == 'priorbox':
                 min_size = layer.prior_box_param.min_size[0]
                 max_size = layer.prior_box_param.max_size[0]
-                aspect_ratio = [layer.prior_box_param.aspect_ratio[0]]
+                aspect_ratio = []
+                for each_ratio in layer.prior_box_param.aspect_ratio:
+                    aspect_ratio.append(each_ratio)
                 flip = layer.prior_box_param.flip
                 clip = layer.prior_box_param.clip
                 variance = []
@@ -492,7 +494,7 @@ def create_model(layers, phase, input_dim, debug=False):
                                               aspect_ratios=aspect_ratio,
                                               flip=flip,
                                               variances=variance,
-                                              clip=clip)(input_layers[0])
+                                              clip=clip)(input_layers[1])
 
             else:
                 raise RuntimeError('layer type', type_of_layer, 'used in this model is not currently supported')
@@ -505,7 +507,26 @@ def create_model(layers, phase, input_dim, debug=False):
     for i in range(0, len(network_outputs)):
         output_l[i] = net_node[network_outputs[i]]
 
-    model = Model(input=input_l, output=output_l)
+    num_classes = layers[len(network)].detection_output_param.num_classes
+    class_layer = output_l[2]
+    num_boxes = class_layer._keras_shape[-1] // num_classes
+    net_class = Reshape((num_boxes, num_classes),
+                         name = 'mbox_conf_logits')(class_layer)
+    net_mbox_conf = Activation('softmax',
+                               name = 'mbox_conf_final')(net_class)
+    net_mbox_conf = net_node[network_outputs[2] - 1]
+    location_layer = output_l[0]
+    num_boxes_loc = location_layer._keras_shape[-1] // 4
+    net_location = Reshape((num_boxes_loc, 4),
+                           name = 'mbox_loc_logits')(location_layer)
+    net_prior_box = output_l[1]
+    net_prediction = merge([net_location,
+                            net_mbox_conf,
+                            net_prior_box],
+                           mode = 'concat', concat_axis=2,
+                           name = 'predictions')
+    model = Model(input=input_l, output=net_prediction)
+
     return model
 
 
