@@ -12,7 +12,7 @@ DATA_PATH='/home/caffe2keras/caffe2keras_ssd/caffe/'
 
 if __name__ == "__main__":
 
-    out_layer_names = ['mbox_loc', 'mbox_priorbox', 'mbox_conf_flatten']
+    out_layer_names = ['predictions']
 
     print "Preparing test image."
     # Read image
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     # Load the converted model
     print
     "Loading model."
-    model_data = open(DATA_PATH + 'models/Keras_model_structure.json').read()
+    model_data = open(DATA_PATH + 'models/Keras_model_structure_renew.json').read()
     # Load model structure
     model = model_from_json(model_data, custom_objects={'PriorBox': PriorBox})
     # Load model weights
