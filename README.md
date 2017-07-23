@@ -51,6 +51,12 @@ python run_convert_prototxt.py -prototxt models/deploy.prototxt.bk -store_file m
 python caffe2keras.py -load_path models -prototxt deploy.prototxt -caffemodel VGG_VOC0712_SSD_300x300_iter_120000.caffemodel
 ```
 
+5. Remake keras model json
+
+```
+python run_keras_model_json_remake.py -load_json models/Keras_model_structure.json -load_prototxt models/deploy.prototxt -write_json models/Keras_model_structure_renew.json
+```
+
 ## Installation
 
     $ git clone
